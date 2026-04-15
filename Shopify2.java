@@ -5,20 +5,6 @@ import java.util.concurrent.locks.*;
 
 public class ShopifyLite {
 
-    public static void main(String[] args) {
-        Store store = new Store();
-
-        long tshirt = store.addProduct("TShirt", 100, 10);
-        long hoodie = store.addProduct("Hoodie", 200, 5);
-
-        String cartId = store.createCart();
-        store.addToCart(cartId, tshirt, 2);
-        store.addToCart(cartId, hoodie, 1);
-
-        Order order = store.checkout(cartId, new NoOpPayment());
-        System.out.println(order);
-    }
-
     static class Store {
         private final Map<Long, Product> products = new ConcurrentHashMap<>();
         private final Map<String, Cart> carts = new ConcurrentHashMap<>();
@@ -108,6 +94,8 @@ public class ShopifyLite {
         }
 
         Map<Long, Integer> snapshot() {
+            // original cart isn’t modified during checkout
+            // prevents concurrent modification issues during checkout 
             return new HashMap<>(items);
         }
 
@@ -138,5 +126,19 @@ public class ShopifyLite {
 
     static class NoOpPayment implements PaymentProcessor {
         public boolean pay(Order order) { return true; }
+    }
+
+    public static void main(String[] args) {
+        Store store = new Store();
+
+        long tshirt = store.addProduct("TShirt", 100, 10);
+        long hoodie = store.addProduct("Hoodie", 200, 5);
+
+        String cartId = store.createCart();
+        store.addToCart(cartId, tshirt, 2);
+        store.addToCart(cartId, hoodie, 1);
+
+        Order order = store.checkout(cartId, new NoOpPayment());
+        System.out.println(order);
     }
 }

@@ -88,7 +88,6 @@ abstract class BaseCacheTier implements CacheTier {
         while (usedBytes + entry.size > capacityBytes) {
             CacheEntry victim = evictLRU();
             if (victim == null) break;
-            onEvict(victim);
         }
 
         insertAtFront(entry);
@@ -116,10 +115,6 @@ abstract class BaseCacheTier implements CacheTier {
         CacheEntry victim = tail;
         delete(victim.key);
         return victim;
-    }
-
-    protected void onEvict(CacheEntry victim) {
-        // overridden by CacheManager orchestration cascading evictions
     }
 
     private void moveToFront(CacheEntry entry) { /* doubly linked list ops */ }

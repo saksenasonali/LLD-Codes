@@ -21,15 +21,12 @@ public class Main {
         ParkingTicket(long id, String vehicleNo, VehicleType type, int floorNo, String spotId) {
             this.id = id; this.vehicleNo = vehicleNo; this.type = type; this.floorNo = floorNo; this.spotId = spotId;
         }
-        public String toString() {
-            return "Ticket{id=" + id + ", vehicle=" + vehicleNo + ", floor=" + floorNo + ", spot=" + spotId + "}";
-        }
     }
 
     static boolean fits(VehicleType v, SpotType s) {
         if (v == VehicleType.BIKE) return true;
         if (v == VehicleType.CAR) return s != SpotType.BIKE;
-        return s == SpotType.LARGE;
+        return s == SpotType.LARGE; // TRUCK
     }
 
     static SpotType[] pref(VehicleType v) {
@@ -41,8 +38,11 @@ public class Main {
     static class Floor {
         final int no;
         final ReentrantLock lock = new ReentrantLock();
+        // stores available spots, q for fast allocation
         final EnumMap<SpotType, Deque<String>> free = new EnumMap<>(SpotType.class);
+        // maps spotId → its type, helps during release
         final Map<String, SpotType> spotType = new HashMap<>();
+        // tracks currently filled spots for quick validation/removal
         final Set<String> occupied = new HashSet<>();
 
         Floor(int no, int b, int c, int l) {
@@ -52,7 +52,7 @@ public class Main {
             add(SpotType.COMPACT, c, "C");
             add(SpotType.LARGE, l, "L");
         }
-
+        // generates all spots and marks them initially free.
         void add(SpotType t, int n, String p) {
             for (int i = 1; i <= n; i++) {
                 String id = "F" + no + "-" + p + i;
@@ -77,13 +77,15 @@ public class Main {
             free.get(spotType.get(spotId)).offerFirst(spotId);
             return true;
         }
-
+        // count free spots
         int available(SpotType t) { return free.get(t).size(); }
     }
 
     static class ParkingLot {
         final Map<Integer, Floor> floors = new LinkedHashMap<>();
+        // map tick id to parking ticket
         final ConcurrentHashMap<Long, ParkingTicket> tickets = new ConcurrentHashMap<>();
+        // generate unique ticket id
         final AtomicLong seq = new AtomicLong(0);
 
         ParkingLot(List<Floor> fs) {
@@ -92,6 +94,7 @@ public class Main {
 
         ParkingTicket park(Vehicle v) {
             for (Floor f : floors.values()) {
+                // floor level lock
                 f.lock.lock();
                 try {
                     String spot = f.allocate(v);
@@ -136,7 +139,7 @@ public class Main {
     public static void main(String[] args) {
         ParkingLot lot = new ParkingLot(Arrays.asList(
                 new Floor(1, 1, 2, 1),
-                new Floor(2, 1, 2, 1)
+                new Floor(2, 1, 2, 1) // floor, bike, compact large spots
         ));
 
         ParkingTicket t1 = lot.park(new Vehicle("KA-01-BIKE", VehicleType.BIKE));
